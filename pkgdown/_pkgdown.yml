@@ -7,8 +7,12 @@ authors:
     href: http://stuartlee.org
   Michael Lawrence:
     href: https://github.com/lawremi
-  Di Cook:
-    href: http://dicook.org
+  Dianne Cook:
+    href: https://dicook.org
+  footer:
+    roles: [aut]
+  sidebar:
+    roles: [aut, ctb]
 
 reference:
 - title: About plyranges
@@ -96,7 +100,7 @@ reference:
     - as_ranges
     - set_width
     - overscope_ranges
-    - tidyverse-reexports
+    - reexports
 
 navbar:
   type: default
@@ -111,4 +115,4 @@ navbar:
     href: news/index.html
   right:
   - icon: fa-github fa-lg
-    href: https://github.com/sa-lee/plyranges
+    href: https://github.com/tidyomics/plyranges
