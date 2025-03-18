@@ -1,3 +1,12 @@
+# PPA grouped mutate speedup, 2025
+check_colnames <- function(col_names) {
+  if (any(col_names %in% "")) {
+    stop("mutate must have name-variable pairs as input", call. = FALSE)
+  }
+  return(invisible(NULL))
+}
+
+
 mutate_mcols <- function(.data, .mutated) {
   all_cols <- names(.mutated)
   only_mcols <- !(all_cols %in%
@@ -23,6 +32,25 @@ mutate_mcols <- function(.data, .mutated) {
   .data
 }
 
+# PPA grouped mutate speedup, 2025
+#' @import dplyr
+mutate_mcols_grp <- function(.data, dots) {
+  
+  # generate grouped df
+  grps <- group_vars(.data)
+  df <- as.data.frame(ungroup(.data))
+  df <- group_by(df,!!!rlang::syms(grps))
+  
+  mcols(.data) <- mutate(df, !!!dots) %>%
+    ungroup() %>%
+    dplyr::select(-tidyselect::any_of(c("start", "end", "width", "seqnames", "strand"))) %>%
+    as("DataFrame")
+  
+  return(.data)
+}
+
+
+
 #' @importFrom methods selectMethod
 mutate_core <- function(.data, .mutated) {
   all_cols <- names(.mutated)
@@ -42,9 +70,7 @@ mutate_core <- function(.data, .mutated) {
 
 mutate_rng <- function(.data, dots) {
   col_names <- names(dots)
-  if (any(col_names %in% "")) {
-    stop("mutate must have name-variable pairs as input", call. = FALSE)
-  }
+  check_colnames(col_names)
 
   overscope <- overscope_ranges(.data)
   .mutated <- overscope_eval_update(overscope, dots)
@@ -55,8 +81,8 @@ mutate_rng <- function(.data, dots) {
 # idea could simply dispatch to summarise here, and store 
 # list columns, if the length is smaller then we can repeat,
 # otherwise we try to expand 
-mutate_grp <- function(.data, ...) {
-  dots <- set_dots_named(...)
+mutate_grp <- function(.data, dots) {
+  
   inx <- .group_rows(.data)
   rng <- unname(S4Vectors::split(.data@delegate, .data@group_indices))
   rng <- S4Vectors::endoapply(rng, function(x) {
@@ -151,7 +177,28 @@ mutate.DelegatingIntegerRanges <- mutate.DelegatingGenomicRanges
 #' @method mutate GroupedGenomicRanges
 #' @export
 mutate.GroupedGenomicRanges <- function(.data, ...) {
-  mutate_grp(.data, ...)
+  
+  dots <- set_dots_named(...)
+  check_colnames(names(dots))
+  core_cols <- names(dots) %in% c("start", "end", "width", "seqnames", "strand")
+  
+  # if any S4 columns in mcols use plyranges group mutate
+  if(any(sapply(mcols(.data), isS4))) {
+    message("metadata contains S4 columns, using plyranges group operations.\nYou can speed up group operations by coercing metadata columns to S3")
+    return(mutate_grp(.data, dots))
+  }
+  # PPA grouped mutate speedup, 2025
+  # if mutating core columns, call plyranges group for those
+  if(any(core_cols)) {
+    .data <- mutate_grp(.data, dots[core_cols])
+  }
+  # if only core columns in call, return object
+  if(all(core_cols)) {
+    return(.data)
+  } else {
+    # use vanilla dplyr group operations on metadata
+    mutate_mcols_grp(.data, dots[!core_cols])
+  }
 }
 
 #' @method mutate GroupedIntegerRanges

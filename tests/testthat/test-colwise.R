@@ -67,3 +67,43 @@ test_that("mutating by groups", {
                    ir2)
 
 })
+
+
+
+
+test_that("mutating by groups with S4 columns", {
+  S4_column <- IntegerList(
+    a = NULL,
+    b = c(4, 5),
+    c = 3,
+    d = c(2, 5),
+    e = 1,
+    f = c(6, 7, 8),
+    g = NULL,
+    h = c(5, 6),
+    i = c(9, 10, 11),
+    j = NULL
+  )
+  mcols(gr1)$exon_id <- S4_column
+  mcols(ir1)$exon_id <- S4_column
+  
+  gr2 <- gr1
+  mcols(gr2)$gt_grp_score <- (score(gr1) > 3.6 &
+                                mcols(gr1)$grp == "A") |
+    (score(gr1) > 6 & mcols(gr1)$grp == "B")
+  expect_identical(gr1 %>%
+                     group_by(grp) %>%
+                     mutate(gt_grp_score = score > mean(score)) %>%
+                     ungroup(),
+                   gr2)
+  ir2 <- ir1
+  mcols(ir2)$lt_grp_score <- (mcols(ir1)$score < 3.6 &
+                                mcols(ir1)$grp == "A") |
+    (mcols(ir1)$score < 6 & mcols(ir1)$grp == "B")
+  expect_identical(ir1 %>%
+                     group_by(grp) %>%
+                     mutate(lt_grp_score = score < mean(score)) %>%
+                     ungroup(),
+                   ir2)
+  
+})
