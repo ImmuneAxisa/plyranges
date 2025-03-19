@@ -183,8 +183,11 @@ mutate.GroupedGenomicRanges <- function(.data, ...) {
   core_cols <- names(dots) %in% c("start", "end", "width", "seqnames", "strand")
   
   # if any S4 columns in mcols use plyranges group mutate
-  if(any(sapply(mcols(.data), isS4))) {
-    message("metadata contains S4 columns, using plyranges group operations.\nYou can speed up group operations by coercing metadata columns to S3")
+  if (any(sapply(mcols(.data), isS4))) {
+    message(
+      paste0("metadata contains S4 columns, using lapply group operations.\n",
+             "removing S4 columns will speed up group operations.")
+    )
     return(mutate_grp(.data, dots))
   }
   # PPA grouped mutate speedup, 2025
